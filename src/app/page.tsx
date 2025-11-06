@@ -150,27 +150,33 @@ export default function Home() {
     const projectsSection = document.getElementById("projects");
     
     if (projectsContainer && projectsSection) {
-      const getDistance = () => projectsContainer.scrollWidth - window.innerWidth;
-      gsap.set(projectsContainer, { x: 0, force3D: true });
+      const isMobile = window.matchMedia('(max-width: 767px)').matches;
+      const getDistance = () => Math.max(0, projectsContainer.scrollWidth - window.innerWidth);
 
-      ScrollTrigger.create({
-        trigger: projectsSection,
-        start: "top top",
-        pin: true,
-        pinReparent: true,
-        scrub: true, // eliminate easing lag on direction change
-        end: () => `+=${getDistance()}`,
-        invalidateOnRefresh: true,
-        anticipatePin: 1,
-        scroller: document.documentElement,
-        snap: 0.001, // micro-snap to avoid subpixel drift
-        onUpdate: (self) => {
-          const dist = (self.end as number) - (self.start as number);
-          gsap.set(projectsContainer, { x: -dist * self.progress, force3D: true });
-        },
-        onLeaveBack: () => gsap.set(projectsContainer, { x: 0 }),
-        onRefresh: () => gsap.set(projectsContainer, { x: 0 }),
-      });
+      // Mobile: skip pinning to avoid blank area; allow native horizontal scroll
+      if (isMobile) {
+        gsap.set(projectsContainer, { x: 0, clearProps: 'transform' });
+      } else {
+        gsap.set(projectsContainer, { x: 0, force3D: true });
+        ScrollTrigger.create({
+          trigger: projectsSection,
+          start: 'top top',
+          pin: true,
+          pinReparent: true,
+          scrub: true, // eliminate easing lag on direction change
+          end: () => `+=${getDistance()}`,
+          invalidateOnRefresh: true,
+          anticipatePin: 1,
+          scroller: document.documentElement,
+          snap: 0.001, // micro-snap to avoid subpixel drift
+          onUpdate: (self) => {
+            const dist = (self.end as number) - (self.start as number);
+            gsap.set(projectsContainer, { x: -dist * self.progress, force3D: true });
+          },
+          onLeaveBack: () => gsap.set(projectsContainer, { x: 0 }),
+          onRefresh: () => gsap.set(projectsContainer, { x: 0 }),
+        });
+      }
     }
 
       // Parallax elements
@@ -220,16 +226,19 @@ export default function Home() {
               transition={{ duration: 0.6, ease: [0.76, 0, 0.24, 1] }}
               className={scrolled ? 'pointer-events-none' : ''}
             >
-              <Link href="/" className="block">
+              <Link href="/" className="block -ml-2 md:-ml-4">
                 {/* LOGO SIZE: Change h-24 (mobile), md:h-32 (tablet), lg:h-40 (desktop) to adjust logo size */}
-                <img 
-                  src="/logo.png?v=2"
-                  alt="Bhagwandas and son's Constructions" 
-                  className="w-auto object-contain h-24 md:h-28 lg:h-32"
-                  style={{
-                    filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.4))'
-                  }}
-                />
+                <picture>
+                  <source media="(min-width: 768px)" srcSet="/logo.png?v=2" />
+                  <img 
+                    src="/mobile-logo.png"
+                    alt="Bhagwandas and son's Constructions" 
+                    className="w-auto object-contain h-24 md:h-28 lg:h-32"
+                    style={{
+                      filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.4))'
+                    }}
+                  />
+                </picture>
               </Link>
             </motion.div>
             
@@ -276,13 +285,14 @@ export default function Home() {
                 scale: scrolled ? 1 : 0
               }}
               transition={{ duration: 0.5, ease: [0.76, 0, 0.24, 1] }}
-              className={`text-sm font-medium px-6 py-2 border rounded-full backdrop-blur-xl shadow-lg whitespace-nowrap transition-colors duration-300 ${
+              className={`hidden md:inline-flex text-sm font-medium px-6 py-2 border rounded-full backdrop-blur-xl shadow-lg whitespace-nowrap transition-colors duration-300 ${
                 isDarkButton 
                   ? 'text-zinc-900 bg-zinc-900/10 border-zinc-900/30 hover:bg-zinc-900/20'
                   : 'text-white bg-white/20 border-white/30 hover:bg-white/30'
               } ${
                 scrolled ? '' : 'pointer-events-none'
               }`}
+              aria-label="Toggle menu (desktop)"
             >
               {menuOpen ? "Close" : "Menu"}
             </motion.button>
@@ -371,7 +381,7 @@ export default function Home() {
           </motion.p>
         </div>
         <motion.div
-          className="absolute bottom-16 right-8 md:right-12 text-white text-xs tracking-widest uppercase flex flex-col items-end gap-3"
+          className="absolute bottom-8 md:bottom-16 right-6 md:right-12 text-white text-xs tracking-widest uppercase flex flex-col items-end gap-3"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 1, duration: 1 }}
@@ -447,12 +457,25 @@ export default function Home() {
           >
             Our recent work
           </motion.h2>
+          {/* Mobile scroll hint */}
+          <motion.p
+            className="text-sm text-zinc-500 md:hidden flex items-center gap-2 mt-2"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-[#F5A623]">
+              <path d="M13 5l7 7-7 7M5 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Swipe to explore
+          </motion.p>
         </div>
-        <div id="projects-scroll" className="flex gap-6 px-6 md:px-12">
+        <div id="projects-scroll" className="flex gap-6 px-6 md:px-12 overflow-x-auto md:overflow-visible snap-x snap-mandatory scrollbar-none">
           {projects.map((project, i) => (
             <div
               key={i}
-              className="project-card flex-shrink-0 w-[40vw] md:w-[24vw] aspect-[3/4] rounded-2xl overflow-hidden relative p-8 flex flex-col justify-end"
+              className="project-card flex-shrink-0 w-[80vw] sm:w-[60vw] md:w-[24vw] aspect-[3/4] min-h-[280px] rounded-2xl overflow-hidden relative p-8 flex flex-col justify-end snap-center"
             >
               <motion.img 
                 src={i % 3 === 0 ? "/hero-bg.jpg" : i % 3 === 1 ? "/about-2.jpg" : "/project-2.jpg"} 
